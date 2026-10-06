@@ -1,0 +1,559 @@
+Build a modular, AI-assisted web application penetration testing framework in Python 3, inspired by the architecture and autonomous workflow of modern security frameworks such as Strix.
+
+## 1. Project Objective
+
+Build a security testing framework that accepts an explicitly authorized web application as its target and performs automated security assessment.
+
+The framework should:
+
+1. Discover the attack surface of the web application.
+2. Identify endpoints, parameters, forms, APIs, and technologies where possible.
+3. Run specialized web security testing modules against discovered attack surfaces.
+4. Collect and normalize security observations.
+5. Use a local LLM through Ollama to analyze the collected information.
+6. Correlate observations and identify potential vulnerabilities.
+7. Produce structured findings and reports.
+
+The framework should be modular so that new web security testing capabilities can be added without modifying the core engine.
+
+This tool is intended only for authorized penetration testing, security research, CTFs, and controlled laboratory environments.
+
+---
+
+## 2. Target
+
+The primary target is a web application supplied by the user.
+
+Example:
+
+```
+https://example.com
+```
+
+The framework should maintain a target context containing information such as:
+
+* Base URL
+* Discovered URLs
+* Endpoints
+* HTTP methods
+* Parameters
+* Forms
+* API routes
+* Response metadata
+* Technologies
+* Authentication state where explicitly configured
+
+The framework must treat the target as an authorized testing target.
+
+---
+
+## 3. High-Level Architecture
+
+Use a modular architecture similar to:
+
+web_pentest_ai/
+├── run.py
+├── core/
+│   ├── **init**.py
+│   ├── engine.py
+│   ├── base_module.py
+│   ├── target.py
+│   ├── context.py
+│   ├── results.py
+│   ├── finding.py
+│   └── logger.py
+│
+├── modules/
+│   ├── **init**.py
+│   ├── endpoint_discovery.py
+│   ├── technology_detection.py
+│   ├── parameter_discovery.py
+│   └── vulnerability_tests/
+│
+├── ai/
+│   ├── **init**.py
+│   ├── llm.py
+│   ├── prompts.py
+│   ├── analyzer.py
+│   └── planner.py
+│
+├── crawler/
+│   ├── **init**.py
+│   └── crawler.py
+│
+├── http/
+│   ├── **init**.py
+│   └── client.py
+│
+├── reports/
+│
+├── config/
+│
+├── tests/
+│
+└── notebooks/
+
+The structure may be improved if the architecture benefits from it, but maintain clear separation between crawling, HTTP communication, security modules, AI reasoning, orchestration, results, and reporting.
+
+---
+
+## 4. Core Engine
+
+The core engine is responsible for orchestrating the assessment.
+
+It should:
+
+* Initialize the target.
+* Maintain assessment context.
+* Load modules dynamically.
+* Determine module dependencies.
+* Execute modules in a controlled manner.
+* Pass discovered information between modules.
+* Collect structured results.
+* Provide relevant information to the AI layer.
+* Manage execution state.
+* Handle errors and timeouts.
+* Produce final findings.
+
+The engine should not contain vulnerability-specific logic.
+
+---
+
+## 5. Module Architecture
+
+Create an abstract base class for all pentesting modules.
+
+Every module should expose a consistent interface containing concepts such as:
+
+* Name
+* Description
+* Category
+* Requirements
+* Target requirements
+* Execution method
+* Result schema
+* Severity where applicable
+
+Modules should return structured data rather than raw terminal output.
+
+The module architecture should allow new tests to be added without modifying the core engine.
+
+---
+
+## 6. Initial Module — Endpoint Discovery
+
+The first major working module should be an endpoint discovery scanner.
+
+This module is particularly important because it forms the foundation for later web application security testing.
+
+It should be capable of discovering, where appropriate:
+
+* URLs
+* Paths
+* API endpoints
+* HTTP methods
+* Query parameters
+* Forms
+* Links
+* JavaScript-referenced endpoints
+* Basic response information
+
+The discovery process should be designed so that its results can be consumed by later security modules.
+
+Example structured result:
+
+{
+"endpoint": "/api/users",
+"method": "GET",
+"parameters": [],
+"status_code": 200,
+"content_type": "application/json"
+}
+
+Do not assume that every discovered endpoint is vulnerable.
+
+---
+
+## 7. Web Application Reconnaissance
+
+Create a reconnaissance layer that can gradually collect information about the target.
+
+Potential capabilities include:
+
+* Endpoint discovery
+* HTTP header analysis
+* Technology fingerprinting
+* JavaScript analysis
+* Parameter discovery
+* API discovery
+* robots.txt analysis
+* sitemap analysis
+* Basic security-header analysis
+
+These should be separate modules rather than one large scanner.
+
+---
+
+## 8. Vulnerability Testing Architecture
+
+Create a dedicated vulnerability-testing architecture.
+
+Future modules may include controlled tests for common web application vulnerabilities such as:
+
+* SQL injection
+* Cross-site scripting
+* Command injection
+* Server-side request forgery
+* Path traversal
+* Authentication weaknesses
+* Authorization/access-control issues
+* Security misconfiguration
+* Insecure direct object references
+* Other OWASP-relevant vulnerabilities
+
+Do not implement all vulnerability modules during the first milestone.
+
+The architecture should make it possible to add them independently.
+
+---
+
+## 9. AI Layer
+
+Use Ollama as the local LLM backend.
+
+Create an abstraction layer so that the framework is not tightly coupled to one specific model.
+
+The AI layer should eventually perform three major functions:
+
+### Analysis
+
+Analyze reconnaissance and testing results.
+
+### Planning
+
+Determine which security modules would be relevant based on the discovered attack surface.
+
+### Correlation
+
+Correlate results from multiple modules and identify potentially related findings.
+
+For example:
+
+Endpoint discovery:
+
+```
+/api/user?id=123
+```
+
+Technology detection:
+
+```
+REST API + Node.js
+```
+
+The AI layer may determine that authorization testing or parameter-related security testing is relevant.
+
+However, the AI must not directly execute arbitrary shell commands.
+
+AI decisions should be converted into requests for explicitly registered framework modules.
+
+---
+
+## 10. Controlled Agent Architecture
+
+The long-term architecture should resemble an autonomous security agent:
+
+```
+Target
+   ↓
+Reconnaissance
+   ↓
+Attack Surface Model
+   ↓
+AI Planner
+   ↓
+Module Selection
+   ↓
+Security Testing
+   ↓
+Results
+   ↓
+AI Analysis
+   ↓
+Correlation
+   ↓
+Findings
+   ↓
+Report
+```
+
+The AI should operate through controlled tools/modules exposed by the framework.
+
+Do not give the LLM unrestricted operating-system access.
+
+---
+
+## 11. HTTP Layer
+
+Create a centralized HTTP client abstraction.
+
+It should handle:
+
+* GET/POST/etc.
+* Headers
+* Cookies
+* Redirects
+* Timeouts
+* Sessions
+* Response handling
+* Rate limiting
+* Request logging where appropriate
+
+Security modules should use this abstraction instead of implementing their own HTTP behavior.
+
+---
+
+## 12. Assessment Context
+
+Maintain a shared assessment context containing information discovered throughout the scan.
+
+For example:
+
+```
+Target
+├── URLs
+├── Endpoints
+├── Parameters
+├── Forms
+├── APIs
+├── Technologies
+├── Headers
+├── Authentication context
+├── Module results
+└── Findings
+```
+
+Modules should be able to consume relevant context and contribute new information.
+
+---
+
+## 13. Findings
+
+Create a standardized finding structure.
+
+Each finding should contain:
+
+* Finding ID
+* Vulnerability type
+* Title
+* Description
+* Severity
+* Confidence
+* Affected URL
+* HTTP method
+* Parameter
+* Evidence
+* Detection module
+* Remediation
+* References
+
+Distinguish between:
+
+```
+Observation
+Potential vulnerability
+Confirmed vulnerability
+```
+
+The AI should not automatically label an observation as a confirmed vulnerability without sufficient evidence.
+
+---
+
+## 14. CLI
+
+Create a clean Rich-based CLI.
+
+Example workflow:
+
+```
+python run.py --target https://example.com
+```
+
+The CLI should display:
+
+* Target
+* Assessment status
+* Current module
+* Discovered endpoints
+* Testing progress
+* Findings
+* Severity
+* AI analysis
+* Final summary
+
+Eventually support commands conceptually similar to:
+
+```
+scan
+recon
+modules
+findings
+report
+status
+```
+
+Keep the CLI modular so a future web dashboard can consume the same underlying engine.
+
+---
+
+## 15. Reporting
+
+Support structured output such as:
+
+* JSON
+* HTML
+* Terminal summary
+
+The report should distinguish:
+
+* Reconnaissance information
+* Tested attack surface
+* Findings
+* Evidence
+* Severity
+* Confidence
+* Remediation
+
+---
+
+## 16. Safety Controls
+
+The framework must be designed for authorized testing.
+
+Implement safeguards such as:
+
+* Explicit target declaration
+* Scope restrictions
+* Request timeouts
+* Rate limiting
+* Module permissions
+* Controlled execution
+* Logging
+* Safe defaults
+* No unrestricted LLM-generated shell commands
+
+Avoid destructive exploitation during the initial implementation.
+
+---
+
+## 17. Development Roadmap
+
+Build incrementally.
+
+### Phase 1 — Foundation
+
+Implement:
+
+* Project structure
+* Target model
+* Assessment context
+* Module interface
+* Core engine
+* HTTP client
+* Rich CLI
+* Endpoint discovery module
+* Structured results
+* Tests
+
+### Phase 2 — Reconnaissance
+
+Add:
+
+* Technology detection
+* JavaScript endpoint extraction
+* Parameter discovery
+* API discovery
+* Security-header analysis
+
+### Phase 3 — AI Integration
+
+Add:
+
+* Ollama integration
+* LLM abstraction
+* Prompt management
+* Structured AI responses
+* Reconnaissance analysis
+
+### Phase 4 — AI Planning
+
+Add:
+
+* Attack-surface analysis
+* Controlled module selection
+* Module dependency handling
+* Result correlation
+
+### Phase 5 — Vulnerability Testing
+
+Add individual vulnerability-testing modules incrementally.
+
+Prioritize safe detection and evidence collection.
+
+### Phase 6 — Reporting
+
+Add:
+
+* HTML reports
+* JSON reports
+* Finding correlation
+* Remediation recommendations
+
+### Phase 7 — Autonomous Workflow
+
+Combine:
+
+```
+Recon → Analyze → Plan → Test → Verify → Correlate → Report
+```
+
+while maintaining strict execution controls.
+
+---
+
+## 18. Engineering Requirements
+
+Prioritize:
+
+* Clean architecture
+* Modularity
+* Type hints
+* Testability
+* Error handling
+* Structured logging
+* Clear interfaces
+* Minimal coupling
+* Security
+* Extensibility
+
+Avoid unnecessary enterprise complexity.
+
+Do not implement the entire framework in one step.
+
+First establish the architecture and contracts.
+
+The FIRST implementation milestone must be a functioning CLI that accepts an authorized web application target, runs endpoint discovery, stores the discovered attack surface in the assessment context, and displays structured results.
+
+After producing the blueprint, clearly provide:
+
+1. System architecture
+2. Component responsibilities
+3. Module interfaces
+4. Data models
+5. Data flow
+6. AI integration points
+7. First implementation milestone
+8. Testing strategy
+9. Future extension points
+
+Do not begin implementing advanced autonomous exploitation before the foundation and contracts are stable.
